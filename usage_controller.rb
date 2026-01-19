@@ -2,8 +2,8 @@ require 'oauth2'
 require 'securerandom'
 require 'set'
 
-class UsageController < ApplicationController
-  helper_method :authenticated?
+class UsageController
+  # helper_method :authenticated?
 
   def authenticated?
     session[:access_token].present? || session[:username].present? || ENV['DEBUG'].present?
@@ -18,9 +18,24 @@ class UsageController < ApplicationController
     end
     client
   end
+
   def welcome
-    client = OAuth2::Client.new(ENV['OAUTH_CONSUMER_TOKEN'], ENV['OAUTH_CONSUMER_SECRET'], site: "https://meta.wikimedia.org/w/rest.php", authorize_url: 'oauth2/authorize', token_url: 'oauth2/access_token' , logger: Logger.new('oauth2.log', 'weekly'))
-    @oauth_url = client.auth_code.authorize_url(redirect_uri: ENV['OAUTH_CALLBACK_URL'])
+    client = OAuth2::Client.new(ENV['OAUTH_CONSUMER_TOKEN'], 
+                                ENV['OAUTH_CONSUMER_SECRET'], 
+                                site: "https://meta.wikimedia.org/w/rest.php", 
+                                authorize_url: 'oauth2/authorize', 
+                                token_url: 'oauth2/access_token', 
+                                logger: Logger.new('oauth2.log', 'weekly'))
+
+    
+
+    puts client.inspect
+
+
+    # @oauth_url = client.auth_code.authorize_url(redirect_uri: '/wiki/Special:OAuth/verified')
+    @oauth_url = client.auth_code.authorize_url(redirect_uri: 'http://localhost:3000/users/auth/mediawiki/callback')
+    
+    puts @oauth_url
   end
 
   def lexeme
@@ -158,8 +173,9 @@ class UsageController < ApplicationController
   end
 
   def review
-    
+
   end
+
   def submit_usage
     # TODO: handle new sense first
     #Rails.logger.info "Access token: #{session[:access_token]}"
@@ -271,7 +287,9 @@ class UsageController < ApplicationController
       redirect_to '/'
     end
   end
+
   protected
+
   def create_new_sense(client, lexeme_id, lang, gloss)
     data = {glosses: {}}
     data[:glosses][lang] = { "value": gloss, "language": lang}
@@ -284,6 +302,7 @@ class UsageController < ApplicationController
       return nil
     end
   end
+
   def get_label_for(qid)
     z = RestClient.get 'https://wikidata.org/w/api.php', {params: {action: 'wbgetentities', ids: qid, format: 'json'}}
     labels = JSON.parse(z.body)['entities'][qid]['labels']
@@ -292,6 +311,7 @@ class UsageController < ApplicationController
     return labels['en']['value'] if labels['en'].present?
     return labels.first[1]['value']
   end
+
   def iri_escape(s)
     s.gsub(' ','_').gsub('"','%22').gsub('[', '%5B').gsub(']','%5D')
   end
@@ -331,3 +351,7 @@ class UsageController < ApplicationController
     sense_ids
   end
 end
+
+oauth_client = UsageController.new
+
+oauth_client.welcome
