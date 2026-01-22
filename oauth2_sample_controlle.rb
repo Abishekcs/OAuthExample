@@ -60,7 +60,42 @@ class Auth::Oauth2Controller < ApplicationController
     else
       Rails.logger.error "No authorization code received"
     end
+ # Method to refresh the access token
+  def refresh_access_token
+    return nil unless session[:refresh_token].present?
 
+    begin
+      client = OAuth2::Client.new(ENV['OAUTH_CONSUMER_TOKEN'],
+                                  ENV['OAUTH_CONSUMER_SECRET'],
+                                  site: "https://meta.wikimedia.org/w/rest.php",
+                                  authorize_url: 'oauth2/authorize',
+                                  token_url: 'oauth2/access_token')
+
+      # Create a token object from the stored refresh token
+      old_token = OAuth2::AccessToken.new(client, session[:access_token], {
+                                          refresh_token: session[:refresh_token],
+                                          expires_at: session[:token_expires_at]})
+
+      # Refresh the token
+      new_token = old_token.refresh!
+
+      # Update session with new tokens
+      session[:access_token] = new_token.token
+      session[:refresh_token] = new_token.refresh_token if new_token.refresh_token
+      session[:token_expires_at] = new_token.expires_at
+
+      Rails.logger.info "Token refreshed successfully"
+      Rails.logger.info "New token expires at: #{Time.at(new_token.expires_at)}" if new_token.expires_at
+
+      new_token
+
+      rescue OAuth2::Error => e
+        Rails.logger.error "Failed to refresh token: #{e.message}"
+        # Clear invalid tokens
+        reset_session
+        nil
+    end
+  
     #   #################################
     #   auth_hash = handle_oauth_callback
     #
