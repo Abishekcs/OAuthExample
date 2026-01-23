@@ -51,6 +51,14 @@ class Auth::Oauth2Controller < ApplicationController
 
         @user = UserImporter.from_omniauth(auth_hash)
 
+        # This will show the error
+        # begin
+        #   oauth_account = OauthAccount.create!(user_id: @user.id, access_token: @access_token.token)
+        #   Rails.logger.info "SUCCESS! Created OAuth Account ID: #{oauth_account.id}"
+        #   rescue ActiveRecord::RecordInvalid => e
+        #   Rails.logger.error "FAILED TO CREATE: #{e.message}"
+        # end
+
         sign_in_and_redirect @user
 
       rescue
